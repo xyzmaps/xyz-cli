@@ -1,5 +1,5 @@
 {
-  "name": "@here/cli",
+  "name": "xyzmaps-cli",
   "description": "CLI for XYZ Maps Platform",
   "author": "xyzmaps",
   "version": "2.0.0",
@@ -68,7 +68,7 @@
     "typescript": "^3.9.5"
   },
   "bin": {
-    "xyzmaps": "bin/here.js"
+    "xyzmaps": "bin/xyzmaps.js"
   },
   "files": [
     "bin/**/*"

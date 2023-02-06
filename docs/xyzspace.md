@@ -2,7 +2,7 @@
 #### List all xyz spaces 
 
 ```
-here xyz list
+xyzmaps space list
 ```
 
 This command will list all the xyzspaces for which the user is authorized.
@@ -10,7 +10,7 @@ This command will list all the xyzspaces for which the user is authorized.
 #### Create a new xyz space 
 
 ```
-here xyz create -t "sample test xyzspace" -d "sample creation"
+xyzmaps space create -t "sample test xyzspace" -d "sample creation"
 ```
 
 Create a new xyzspace with name x-samplexyzspace. 
@@ -24,14 +24,14 @@ Create a new xyzspace with name x-samplexyzspace.
 #### Upload/Update  data to xyz space 
 - #### upload geojson
     ```
-    here xyz upload x-testxyzspace -f /Users/dhatb/data.geojson
+    xyzmaps space upload x-testxyzspace -f /Users/dhatb/data.geojson
     ```
     Upload data to xyzspace with name x-testxyzspace
     ##### Options 
     -f path to file name
 - #### upload csv
     ```
-    here xyz upload x-testxyzspace -f /Users/dhatb/data.csv
+    xyzmaps space upload x-testxyzspace -f /Users/dhatb/data.csv
     ```
     Upload data to xyzspace with name x-testxyzspace
     ##### Options 
@@ -43,7 +43,7 @@ Create a new xyzspace with name x-samplexyzspace.
 
 - #### upload shapefile
     ```
-    here xyz upload x-testxyzspace -f /Users/dhatb/data.shp
+    xyzmaps space upload x-testxyzspace -f /Users/dhatb/data.shp
     ```
     Upload data to xyzspace with name x-testxyzspace
     ##### Options 
@@ -61,7 +61,7 @@ Create a new xyzspace with name x-samplexyzspace.
 #### View a xyzspace  
 
 ```
-here xyz show x-testxyzspace
+xyzmaps space show x-testxyzspace
 ```
 
 List the objects of a xyzspace 
@@ -75,7 +75,7 @@ List the objects of a xyzspace
 #### Delete a xyzspace 
 
 ```
-here xyz delete x-testxyzspace
+xyzmaps space delete x-testxyzspace
 ```
 
 Delete a xyzspace on which the user is authorised to.

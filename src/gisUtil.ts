@@ -23,7 +23,7 @@
 */
 
 import * as common from "./common";
-import * as xyz from "./here-xyz";
+import * as xyz from "./xyzmaps-space";
 import * as tmp from "tmp";
 import * as fs from "fs";
 import * as turf from "@turf/turf";

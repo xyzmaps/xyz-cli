@@ -30,7 +30,7 @@ const program = require('commander');
 const settings = require('user-settings').file('.xyzcli');
 const latestVersion = require('latest-version');
 
-const commands = ["xyz", "xs", "transform","tf", "help"];
+const commands = ["space", "s", "transform","tf", "help"];
 
 async function start() {
     process.removeAllListeners('warning');
@@ -40,7 +40,7 @@ async function start() {
     program
         .version(getVersion())
         .command('transform [csv2geo|shp2geo|gpx2geo]', 'convert from csv/shapefile/gpx to geojson').alias('tf')
-        .command('xyz [list|create|upload]', 'work with Data Hub spaces').alias('xs')
+        .command('space [list|create|upload]', 'work with Data Hub spaces').alias('xs')
     program.parse(process.argv);
     common.validate(commands, program.args, program);
 }

@@ -956,7 +956,7 @@ export async function updateCommandMetadata(id: string, options: any, isClear: b
             }
         }
         let command = {
-            "command" : `here xyz upload ${id} ` + commandArray.join(" "),
+            "command" : `xyzmaps space upload ${id} ` + commandArray.join(" "),
             "timestamp": moment().toISOString(true)
         }
         history = [command].concat(history);

@@ -36,14 +36,9 @@ import * as tmp from "tmp";
 import * as summary from "./summary";
 let cq = require("block-queue");
 import { isBoolean } from "util";
-import { ApiError } from "./api-error";
 const gsv = require("geojson-validation");
 const path = require('path');
 const open = require("open");
-const XLSX = require('xlsx');
-import * as moment from 'moment';
-import * as glob from 'glob';
-import { option } from "commander";
 import { execInternal, handleError} from "./common";
 import * as xyzutil from "./xyzutil";
 
@@ -803,7 +798,7 @@ async function listTokens() {
 
 program
     .command("upload [id]")
-    .description("upload one or more GeoJSON, CSV, GPX, XLS, or a Shapefile to the given id -- if no spaceID is given, a new space will be created; GeoJSON feature IDs will be respected unless you override with -o or specify with -i; pipe GeoJSON via stdout using | here xyz upload spaceid")
+    .description("upload one or more GeoJSON, CSV, GPX, XLS, or a Shapefile to the given id -- if no spaceID is given, a new space will be created; GeoJSON feature IDs will be respected unless you override with -o or specify with -i; pipe GeoJSON via stdout using | xyzmaps space upload spaceid")
     .option("-f, --file <file>", "comma separated list of local GeoJSON, GeoJSONL, Shapefile, CSV, GPX, or XLS files (or GeoJSON/CSV URLs); use a directory path and --batch [filetype] to upload all files of that type within a directory")
     .option("-c, --chunk [chunk]", "chunk size, default 200 -- use smaller values (1 to 10) to allow safer uploads of very large geometries (big polygons, many properties), use higher values (e.g. 500 to 5000) for faster uploads of small geometries (points and lines, few properties)")
     .option("-t, --tags [tags]", "fixed tags for features uploaded to the Data Hub space")
@@ -922,7 +917,7 @@ async function executeHistoryCommand(id: string, options: any){
         let newArgvStringArray: Array<string> = process.argv.slice(0,3);
         newArgvStringArray = newArgvStringArray.concat(commandString.split(" ").slice(3));
         process.argv = newArgvStringArray;
-        console.log("Executing command - " + "here xyz upload " + process.argv.slice(3).join(" "));
+        console.log("Executing command - " + "xyzmaps space upload " + process.argv.slice(3).join(" "));
         options.history = null;
         await program.parseAsync(process.argv);//making async call so that main thread execution stops
     }
@@ -2475,4 +2470,4 @@ common.validate(
     [process.argv[2]],
     program
 );
-program.name('here xyz').parse(process.argv);
+program.name('xyzmaps space').parse(process.argv);
