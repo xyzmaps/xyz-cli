@@ -1,8 +1,8 @@
 {
   "name": "@here/cli",
   "description": "CLI for XYZ Maps Platform",
-  "author": "HERE Europe B.V.",
-  "version": "1.9.0",
+  "author": "xyzmaps",
+  "version": "2.0.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/xyzmaps/xyz-cli"
@@ -61,14 +61,14 @@
     "capture-console": "^1.0.1",
     "chai": "^4.2.0",
     "express": "^4.17.1",
-    "mocha": "^9.1.3",
+    "mocha": "^10.2.0",
     "mock-require": "^3.0.3",
     "rewire": "^5.0.0",
     "ts-node": "^8.10.2",
     "typescript": "^3.9.5"
   },
   "bin": {
-    "xyz": "bin/here.js"
+    "xyzmaps": "bin/here.js"
   },
   "files": [
     "bin/**/*"
