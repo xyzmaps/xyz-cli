@@ -198,10 +198,7 @@ program
 
 //TODO - fix test execution and remove this method and directly use common module method
 async function execute(uri: string, method: string, contentType: string, data: any, token: string | null = null, gzip: boolean = false) {
-    if (!token) {
-        token = await common.verify();
-    }
-    return await execInternal(uri, method, contentType, data, token, gzip, true);
+    return await execInternal(uri, method, contentType, data, "notoken", gzip, true);
 }
 
 async function listSpaces(options: any) {
@@ -345,7 +342,6 @@ program
     .action(function (id, options) {
         (async () => {
             try {
-                await common.verifyProLicense();
                 const sourceId = id;
                 options.totalRecords = Number.MAX_SAFE_INTEGER;
                 
@@ -638,8 +634,7 @@ program
     });
 
 async function isOtherOwnerSpace(spaceOwner: string) {
-    const currentOwner = await common.getAccountId();
-    return currentOwner != spaceOwner;
+    return true;
 }
 
 export async function createNewSpaceUpdateMetadata(newSpaceType: string, sourceId: string, sourceSpaceData: any, updateSourceMetadata: boolean = true, newSpacetoken: string | null = null) {
@@ -797,23 +792,13 @@ program
     });
 
 async function listTokens() {
-    const tokenInfo = await common.getTokenList();
-    const currentToken = await common.decryptAndGet("keyInfo", "No token found");
     console.log(
         "===================================================="
     );
-    console.log("Current CLI token is : " + currentToken);
+    console.log("Tokens not supported");
     console.log(
         "===================================================="
     );
-    for(let token of tokenInfo){
-        if(token.exp){
-            token.type = "TEMPORARY";
-        } else {
-            token.type = "PERMANENT";
-        }
-    }
-    common.drawNewTable(tokenInfo, ["tid", "type", "iat", "description"], [25, 10, 10, 70]);
 }
 
 program
@@ -1025,9 +1010,6 @@ program
     })
 
 async function configXyzSpace(id: string, options: any) {
-    if(options.schema || options.searchable || options.tagrules || options.activitylog || options.geocoder){
-        await common.verifyProLicense();
-    }
 
     let patchRequest: any = {};
     let spacedef: any = null;
@@ -1246,7 +1228,6 @@ async function configXyzSpace(id: string, options: any) {
 
 
 async function activityLogConfig(id:string, options:any) {
-    await common.verifyProLicense();
     let patchRequest:any = {};
 
     let tabledata:any = {};
@@ -1334,9 +1315,8 @@ async function activityLogConfig(id:string, options:any) {
 }
 
 async function geocoderConfig(id:string, options:any) {
-    await common.verifyProLicense();
     let patchRequest:any = {};
-    const apiKey = await common.getLocalApiKey();
+    const apiKey ="nokey";
     let tabledata:any = {};
     let spacedef = await xyzutil.getSpaceMetaData(id);
     let enabled = false;
@@ -1719,7 +1699,6 @@ program
 */
 
 async function createGeocoderSpace(id:string, options:any){
-    await common.verifyProLicense();
     if(!options.file){
         console.log("ERROR : Please specify file for upload");
         return;
@@ -1733,7 +1712,7 @@ async function createGeocoderSpace(id:string, options:any){
         return;
     }
     let params : any = {};
-    params['apiKey'] = await common.getLocalApiKey();;
+    params['apiKey'] = "nokey";
     if(!options.forward && !options.reverse){
         params = await configureGeocodeInteractively(params, options);
     }
@@ -1810,220 +1789,6 @@ async function getCsvColumnsChoiceList(options: any){
     return csvColumnsChoiceList;
 }
 
-program
-    .command("sharing")
-    .description("configure/view sharing information for Data Hub spaces")
-    .option("--request [request]", "view and configure existing data hub space sharing requests")
-    .option("--approval", "view and configure existing data hub space approval requests")
-    .option("--retract <retract>", "retract your requests to share another user's space")
-    .action(async function (options) {
-        try{
-            await common.verifyProLicense();
-            if(options.request && options.approval){
-                console.log("ERROR : Only one of the --request or --approval option allowed");
-                return;
-            }
-            if(!options.request && !options.approval && !options.retract){
-                const answer: any = await inquirer.prompt(sharingQuestion);
-                const result = answer.sharingChoice;
-                if(result === 'newSharing'){
-                    const spaceIdAnswer: any = await inquirer.prompt(sharingSpaceQuestion);
-                    if(spaceIdAnswer.sharingSpaceId == ''){
-                        console.log("ERROR : Please enter a valid spaceId");
-                        return;
-                    }
-                    options.request = spaceIdAnswer.sharingSpaceId;
-                } else if(result === 'request') {
-                    options.request = true;
-                } else if(result === 'approval'){
-                    options.approval = true;
-                } else if(result == 'sharing'){
-                    await showExistingSharings();
-                } else if(result == 'modifySharing'){
-                    let existingSharings = await common.getExistingSharing();
-                    existingSharings = await addTitleInSharingList(existingSharings, true);
-                    if(existingSharings.length == 0){
-                        console.log("No spaces are shared");
-                        return;
-                    }
-                    let choiceList: { name: string, value: any }[] = [];
-                    for(let sharing of existingSharings){
-                        choiceList.push({name: sharing.spaceId + " '" + sharing.title + "' " + sharing.emailId + ' ' + sharing.urm, value: {id: sharing.id, title: sharing.title}});
-                    }
-                    const sharingModifyQuestion = [
-                        {
-                            type: "list",
-                            name: "sharingId",
-                            message: "Please select the sharing you want to revoke/modfiy",
-                            choices: choiceList
-                        }
-                    ];
-                    const sharingAnswer: any = await inquirer.prompt(sharingModifyQuestion);
-                    const sharingId = sharingAnswer.sharingId.id;
-                    let actionList = [{name:'Revoke', value: 'revoke'}];
-                    if(sharingAnswer.sharingId.title != "SPACE IS DELETED"){
-                        actionList.push({name: 'Modify', value: 'modify'});
-                    }
-                    const actionSelectionPrompt = [ {
-                        type: "list",
-                        name: "action",
-                        message: "Please select your decision",
-                        choices: actionList
-                    }];
-                    const actionAnswer: any = await inquirer.prompt(actionSelectionPrompt);
-                    const action = actionAnswer.action;
-                    if(action == 'revoke'){
-                        await common.deleteSharing(sharingId);
-                        console.log("Sharing revoked successfully");
-                    } else if(action == 'modify'){
-                        const urm = await askSharingRightsQuestion();
-                        await common.modifySharingRights(sharingId, urm);
-                        console.log("Sharing rights modified successfully");
-                    }
-                }
-            }
-            if(options.request){
-                if(options.request != true){
-                    const newSharingRequest = await common.createNewSharingRequest(options.request);
-                    console.log("New sharing request created with id - " + newSharingRequest.id);
-                } else {
-                    await showExistingSharingRequests();
-                }
-            } else if(options.approval){
-                await showExistingApprovals();
-            } else if(options.retract){
-                let sharingRequests = await common.getSharingRequests();
-                let status = null;
-                for(let sharingRequest of sharingRequests){
-                    if(sharingRequest.id == options.retract){
-                        status = sharingRequest.status;
-                        break;
-                    }
-                }
-                if(!status){
-                    console.log("Sharing request with id " + options.retract + " does not exist. Please give valid sharingId");
-                    return;
-                } else if(status == 'ACCEPTED'){
-                    await common.deleteSharing(options.retract);
-                } else {
-                    await common.deleteSharingRequest(options.retract);
-                }
-                console.log("Sharing request retracted successfully");
-            }
-        } catch(error) {
-            console.log(error.statusCode);
-            handleError(error, false);
-        }
-    });
-
-async function showExistingSharingRequests(){
-    let sharingRequests = await common.getSharingRequests();
-    sharingRequests = await addTitleInSharingList(sharingRequests, false);
-    //TODO - check how to give delete operation
-    common.drawNewTable(sharingRequests, ['id', 'spaceId','title', 'urm','status']);
-}
-
-async function showExistingSharings(){
-    let existingSharings = await common.getExistingSharing();
-    existingSharings = await addTitleInSharingList(existingSharings, true);
-    //TODO - check how to give delete and update operation
-    common.drawNewTable(existingSharings, ['id', 'spaceId','title', 'emailId', 'urm','status']);
-}
-
-async function addTitleInSharingList(sharingList: any[], isOwner: boolean){
-    let spaceMap = new Map<string,any>();
-    if(isOwner){
-        let spaceList = await getListOfSpaces();
-        for(let space of spaceList){
-            spaceMap.set(space.id, space);
-        }
-    }   
-    for(let sharing of sharingList){
-        let spaceData;
-        if(isOwner){
-            spaceData = spaceMap.get(sharing.spaceId);
-        } else {
-            try{
-                if(sharing.status == 'ACCEPTED'){
-                    spaceData = await xyzutil.getSpaceMetaData(sharing.spaceId);
-                } else {
-                    spaceData = {'title': ''};
-                }
-            } catch(error){
-                if(!error.statusCode || error.statusCode != 404){
-                    throw error;
-                }
-            }
-        }
-        if(spaceData){
-            sharing.title = spaceData.title;
-        } else {
-            sharing.title = "SPACE IS DELETED";
-        }
-    }
-    return sharingList;
-}
-
-async function showExistingApprovals(){
-    let existingApprovals = await common.getExistingApprovals();
-    existingApprovals = await addTitleInSharingList(existingApprovals, true);
-    let choiceList: { name: string, value: any }[] = [];
-    for(let sharingApproval of existingApprovals){
-        if(sharingApproval.status == 'PENDING'){
-            choiceList.push({name: sharingApproval.spaceId + " '" + sharingApproval.title + "' " + sharingApproval.emailId, value: { id: sharingApproval.id, title: sharingApproval.title}});
-        }
-    }
-    if(choiceList.length === 0){
-        console.log("No approvals pending.");
-    } else {
-        const approvalSelectionPrompt = [
-            {
-                type: "list",
-                name: "sharingId",
-                message: "Select sharing request for approval",
-                choices: choiceList
-            }
-        ];
-        const answer: any = await inquirer.prompt(approvalSelectionPrompt);
-        const sharingId = answer.sharingId.id;
-        let verdictList = [{name:'reject', value: 'reject'}];
-        if(answer.sharingId.title != "SPACE IS DELETED"){
-            verdictList.push({name: 'accept', value: 'accept'});
-        }
-        const verdictSelectionPrompt = [ {
-            type: "list",
-            name: "verdict",
-            message: "Please select your decision",
-            choices: verdictList
-        }];
-        const verdictAnswer: any = await inquirer.prompt(verdictSelectionPrompt);
-        const verdict = verdictAnswer.verdict; 
-        let urm;
-        if(verdict === 'accept'){
-            urm = await askSharingRightsQuestion();
-        }
-        await common.putSharingApproval(sharingId, verdict, urm);
-        console.log("sharing request " + sharingId + " " + verdict + "ed successfully");
-    }
-}
-
-async function askSharingRightsQuestion(){
-    const rightsSelectionPrompt = [
-        {
-            type: "checkbox",
-            name: "urm",
-            message: "Select the rights for the sharing",
-            choices: [{name: 'readFeatures', value: 'readFeatures'},{name: 'createFeatures', value: 'createFeatures'},{name: 'updateFeatures', value: 'updateFeatures'}]
-        }
-    ];
-    const rightsAnswer: any = await inquirer.prompt(rightsSelectionPrompt);
-    const urm = rightsAnswer.urm;
-    if(urm.length === 0){
-        console.log("ERROR : Please select atleast one right for sharing approval");
-        process.exit(1);
-    }
-    return urm;
-}
 
 program
     .command("join <id>")
@@ -2051,7 +1816,6 @@ program
     })
 
 async function createJoinSpace(id:string, options:any){
-    await common.verifyProLicense();
     if(!options.file){
         console.log("ERROR : Please specify file for upload");
         return;
@@ -2108,8 +1872,6 @@ program
     .action(options => createVirtualSpace(options).catch((err) => { handleError(err) }));
 
 async function createVirtualSpace(options: any) {
-
-    await common.verifyProLicense();
 
     if (options) {
         if (options.group && options.associate) {
@@ -2254,7 +2016,6 @@ function getProcessorFromSpaceDefinition(spacedef: any, processorName: string){
 //     })
 
 async function tagRuleConfig(id: string, options: any) {
-    await common.verifyProLicense();
     let patchRequest: any = {};
     let spacedef = await xyzutil.getSpaceMetaData(id);
     if (spacedef != null) {
@@ -2510,7 +2271,6 @@ async function tagRuleConfig(id: string, options: any) {
 //     })
 
 async function searchableConfig(id: string, options: any) {
-    await common.verifyProLicense();
     let patchRequest: any = {};
     let spacedef = await xyzutil.getSpaceMetaData(id);
 

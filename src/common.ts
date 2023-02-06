@@ -23,16 +23,14 @@
 */
 
 import { requestAsync } from "./requestAsync";
-import getMAC from 'getmac';
 import {table,getBorderCharacters} from 'table';
 import {ApiError} from "./api-error";
 import * as turf from "@turf/turf";
 import * as intersect from "@turf/intersect";
-
-const fs = require('fs');
-const path = require('path');
 import * as zlib from "zlib";
 import * as h3 from "h3-js";
+
+const path = require('path');
 const geojson2h3 = require('geojson2h3');
 const h3resolutionRadiusMap = require('./h3resolutionRadiusMap.json');
 

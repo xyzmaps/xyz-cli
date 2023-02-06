@@ -26,7 +26,6 @@
 
 const bboxDirections = ["west", "south", "east", "north"];
 import * as common from "./common";
-import * as catalogUtil from "./catalogUtil";
 import * as summary from "./summary";
 import * as hexbin from "./hexbin";
 import * as moment from 'moment';
@@ -61,17 +60,7 @@ const titlePrompt = [
     }
 ];
 
-let catalogHrn: string,
-    layer: any;
 let idMsg = "Data Hub space ";
-export function setCatalogHrn(hrn: string){
-    catalogHrn = hrn;
-    idMsg = "Interactive map layer ";
-}
-
-export function setLayer(layerConfig: any){
-    layer = layerConfig;
-}
 
 export function getSpaceDataFromXyz(id: string, options: any) {
     return new Promise<any>(function (resolve, reject) {
@@ -499,7 +488,7 @@ export async function uploadToXyzSpace(id: string, options: any) {
                     );
                 } catch (e) {
                     console.log(
-                        "Empty or invalid input to upload. Refer to 'here " + (catalogHrn ? "iml" : "xyz") + " upload -h' for help"
+                        "Empty or invalid input to upload. Refer to 'xyzcli upload -h' for help"
                     );
                     process.exit(1);
                 }
@@ -508,9 +497,7 @@ export async function uploadToXyzSpace(id: string, options: any) {
         let totalTime = ((new Date().getTime() - startTime.getTime()) / 1000);
         console.log(options.totalCount + " features uploaded to " + idMsg + "'" + id + "' in " + totalTime + " seconds, at the rate of " + Math.round(options.totalCount / totalTime) + " features per second");
     }
-    if(!catalogHrn){
-        await updateCommandMetadata(id, options, false, null);
-    }
+    await updateCommandMetadata(id, options, false, null);
     console.log("");
     //console.log("upload completed successfully");
     //})();
@@ -615,7 +602,7 @@ async function uploadDataToSpaceWithTags(
 
             try {
                 let uri = id + "/features" + "?clientId=cli";
-                if(!catalogHrn && options.tags){
+                if(options.tags){
                     uri = uri + "&addTags=" + options.tags.toLowerCase();
                 }
                 if (options.stream) {
@@ -654,7 +641,6 @@ async function uploadDataToSpaceWithTags(
                     upresult.total = featureOut.length;
                     console.table(upresult);
                 } else {
-                    options.catalogHrn = catalogHrn;
                     summary.summarize(featureOut, id, true, options);
                 }
                 options.totalCount = featureOut.length;
@@ -1139,16 +1125,9 @@ export async function showSpace(id: string, options: any) {
             }
             if(options.feature) {
                 const refspacefeature = options.feature.split(',');
-                if(catalogHrn) {
-                    refcataloghrn = refspacefeature[0];
-                    refspace = refspacefeature[1];
-                    reffeature = refspacefeature[2];
-                    uri = uri + "&" + "refCatalogHrn="+refcataloghrn+"&refLayerId="+refspace+"&refFeatureId="+reffeature;
-                } else {
-                    refspace = refspacefeature[0];
-                    reffeature = refspacefeature[1];
-                    uri = uri + "&" + "refSpaceId="+refspace+"&refFeatureId="+reffeature;
-                }
+                refspace = refspacefeature[0];
+                reffeature = refspacefeature[1];
+                uri = uri + "&" + "refSpaceId="+refspace+"&refFeatureId="+reffeature;
                 if(options.radius) {
                     uri = uri + "&" + "radius="+ options.radius;
                 }
@@ -1297,9 +1276,7 @@ export async function showSpace(id: string, options: any) {
                 "createdAt",
                 "updatedAt"
             ];
-            if(!catalogHrn){
-                fields.push("tags");
-            }
+            fields.push("tags");
             const responseBody = response.body;
             const allFeatures = responseBody.features;
             const responseHandle = responseBody.handle;
@@ -1348,25 +1325,7 @@ async function launchHereGeoJson(uri: string, spaceIds: string[],  token: string
 }
 
 async function getReadOnlyToken(inputSpaceIds: string[], isPermanent: boolean){
-    if(isPermanent){
-        console.log("generating permanent token for this " + idMsg);
-    } else {
-        console.log("generating a temporary token which will expire in 48 hours – use --permanent / -x to generate a token for this " + idMsg + "that will not expire");
-    }
-    let spaceIds: string[] = [];
-    for(let spaceId of inputSpaceIds){
-        const spaceConfig = await getSpaceMetaData(spaceId);
-        spaceIds.push(spaceId);
-        if(spaceConfig.storage && spaceConfig.storage.id && spaceConfig.storage.id === 'virtualspace'){
-            const storageparams = spaceConfig.storage.params.virtualspace;
-            spaceIds = spaceIds.concat(storageparams['group'] ? storageparams['group'] : []);
-            spaceIds = spaceIds.concat(storageparams['merge'] ? storageparams['merge'] : []);
-            spaceIds = spaceIds.concat(storageparams['override'] ? storageparams['override'] : []);
-            spaceIds = spaceIds.concat(storageparams['custom'] ? storageparams['custom'] : []);
-        }
-    }
-    const token = await common.createReadOnlyToken(spaceIds, isPermanent);
-    return token;
+    return "notoken";
 }
 
 async function launchXYZSpaceInvader(spaceId: string, tags: string, token: string, isPermanent: boolean) {
@@ -1414,8 +1373,6 @@ export async function createSpace(options: any) {
 
     if (options.schema) {
 
-        await common.verifyProLicense();
-
         if (options.schema == true) {
             console.log("Please add local filepath / http link for your schema definition")
             process.exit(1);
@@ -1461,19 +1418,16 @@ export async function deleteSpace(geospaceId: string, options:any) {
         }
     }
 
-    if(catalogHrn){
-        await catalogUtil.deleteLayer(catalogHrn, geospaceId, options.token);
-    } else {
-        const response = await execute(
-            geospaceId + "?clientId=cli",
-            "DELETE",
-            "application/json",
-            "",
-            options.token
-        );
-        if (response.statusCode >= 200 && response.statusCode < 210)
-            console.log(idMsg + "'" + geospaceId + "' deleted successfully");
-    }
+    const response = await execute(
+        geospaceId + "?clientId=cli",
+        "DELETE",
+        "application/json",
+        "",
+        options.token
+    );
+    if (response.statusCode >= 200 && response.statusCode < 210)
+        console.log(idMsg + "'" + geospaceId + "' deleted successfully");
+
 }
 
 export async function clearSpace(id: string, options: any) {
@@ -1560,14 +1514,7 @@ async function printDeleteWarning(id: string, options: any) {
 
 async function getStatsAndBasicForSpace(spaceId: string) {
     let statsbody = await getSpaceStatistics(spaceId);
-    if(catalogHrn) {
-        statsbody['spacedef'] = {};
-        statsbody['spacedef']['id'] = layer.id;
-        statsbody['spacedef']['title'] = layer.name;
-        statsbody['spacedef']['description'] = layer.description;
-    } else {
-        statsbody['spacedef'] = await getSpaceMetaData(spaceId);
-    }
+    statsbody['spacedef'] = await getSpaceMetaData(spaceId);
     return statsbody;
 }
 
@@ -1588,11 +1535,7 @@ export async function getSpaceStatistics(id: string, token: string | null = null
 //function created here to pass the test. TODO - rewrite the test code
 export async function execute(uri: string, method: string, contentType: string, data: any, token: string | null = null, gzip: boolean = false, setAuthorization: boolean = true) {
     if (!token) {
-        if(catalogHrn){
-            token = await common.getWorkspaceToken();
-        } else {
-            token = await common.verify();
-        }
+        token="notoken"
     }
-    return await common.execInternal(uri, method, contentType, data, token, gzip, setAuthorization, catalogHrn);
+    return await common.execInternal(uri, method, contentType, data, token, gzip, setAuthorization);
 }

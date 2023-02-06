@@ -25,15 +25,12 @@
 */
 
 import * as common from "./common";
-import * as inquirer from 'inquirer';
 
 const program = require('commander');
 const settings = require('user-settings').file('.xyzcli');
 const latestVersion = require('latest-version');
 
 const commands = ["xyz", "xs", "transform","tf", "help"];
-const fs = require('fs');
-const path = require('path');
 
 async function start() {
     process.removeAllListeners('warning');

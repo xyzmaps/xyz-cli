@@ -31,7 +31,6 @@ import {Delaunay} from "d3-delaunay";
 import {getSpaceDataFromXyz, uploadToXyzSpace, getSpaceStatistics} from "./xyzutil";
 
 export async function performGisOperation(id:string, options:any){
-    await common.verifyProLicense();
     const sourceId = id;
     options.totalRecords = Number.MAX_SAFE_INTEGER;
     options.currentHandleOnly = true;
