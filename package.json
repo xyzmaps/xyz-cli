@@ -1,11 +1,11 @@
 {
   "name": "@here/cli",
-  "description": "CLI for HERE XYZ Platform",
+  "description": "CLI for XYZ Maps Platform",
   "author": "HERE Europe B.V.",
   "version": "1.9.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/heremaps/here-cli"
+    "url": "https://github.com/xyzmaps/xyz-cli"
   },
   "scripts": {
     "prepare": "npx tsc",
@@ -13,7 +13,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@here/olp-sdk-authentication": "1.11.0",
     "@turf/turf": "6.3.0",
     "JSONStream": "^1.3.5",
     "block-queue": "0.0.2",
@@ -69,7 +68,7 @@
     "typescript": "^3.9.5"
   },
   "bin": {
-    "here": "bin/here.js"
+    "xyz": "bin/here.js"
   },
   "files": [
     "bin/**/*"

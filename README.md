@@ -1,18 +1,18 @@
-# HERE CLI
+# XYZ CLI
 [![Build Status](https://travis-ci.com/heremaps/here-cli.svg?branch=master)](https://travis-ci.com/heremaps/here-cli)
 
-HERE CLI is a Node.js command-line interface to work with HERE APIs starting with [HERE Data Hub](https://www.here.xyz) APIs. Right now, it allows you to interact with HERE Data Hub to create and manage your Spaces, and easily upload and manage your datasets.
+XYZ CLI is a Node.js command-line interface to work with XYZ APIs starting with [XYZ Data Hub](https://www.here.xyz) APIs. Right now, it allows you to interact with XYZ Data Hub to create and manage your Spaces, and easily upload and manage your datasets.
 
 ### Prerequisites
 
-HERE CLI is built on Node.js, a cross-platform efficient language to write even complex, local applications.
+XYZ CLI is built on Node.js, a cross-platform efficient language to write even complex, local applications.
 
-To use the  HERE CLI, you should have npm installed. The best way is to go to nodejs.org and install the appropriate package for your system (both 8.x LTS and 10.x Current should work). If you need
+To use the  XYZ CLI, you should have npm installed. The best way is to go to nodejs.org and install the appropriate package for your system (both 8.x LTS and 10.x Current should work). If you need
 help with this have a look at our [CLI Introduction Guide](https://www.here.xyz/cli/).
 
 ### Installing the CLI
 
-To install the HERE CLI use the following command. Depending on your system, you might need elevated permissions (like sudo) to install globally.
+To install the XYZ CLI use the following command. Depending on your system, you might need elevated permissions (like sudo) to install globally.
 
 ```
 npm install -g @here/cli
@@ -21,14 +21,14 @@ npm install -g @here/cli
 If all goes well, you can check if the CLI is installed correctly by just runnning
 
 ```
-here --help
+XYZ --help
 ```
 
 
-## Configure HERE CLI
+## Configure XYZ CLI
 
-As the HERE CLI works with HERE APIs in the cloud, you need to configure your developer identity.
-This only needs to be done once. Just run `here configure` to set the `email` and `password`.
+As the XYZ CLI works with XYZ APIs in the cloud, you need to configure your developer identity.
+This only needs to be done once. Just run `XYZ configure` to set the `email` and `password`.
 For detailed information on getting a Developer account have a look at our [Getting Started Guide](https://www.here.xyz/getting-started/).
 
 ## Supported Commands
@@ -38,7 +38,7 @@ The CLI currently support the following sub-commands:
 ```
 - configure|c [verify|refresh]            setup configuration for authentication
 - xyz|xs [list|create|upload]             work with Data Hub spaces
-- studio [list|delete|show]               work with HERE Studio projects
+- studio [list|delete|show]               work with XYZ Studio projects
 - transform|tf [csv2geo|shp2geo|gpx2geo]  convert from csv/shapefile/gpx to geojson
 - geocode|gc                              geocode feature
 - help [command]                          display help for command
@@ -84,11 +84,11 @@ We encourage contributions. For fixes and improvements it's helpful to have an [
 
 When you add a new sub-command (as `bin/here-commandname.js`) please make sure to also include the relevant documentation (as `docs/commandname.md`).
 
-If the command is interacting with a HERE service, please include a links to the relevant service documenation at [developer.here.com](https://developer.here.com/documentation). 
+If the command is interacting with a XYZ service, please include a links to the relevant service documenation at [developer.here.com](https://developer.here.com/documentation). 
 
 ## License
 
-Copyright (C) 2018 - 2021 HERE Europe B.V.
+Copyright (C) 2018 - 2021 XYZ Europe B.V.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 

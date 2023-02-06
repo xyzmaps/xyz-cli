@@ -22,22 +22,12 @@
   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-import * as sso from "./sso";
 import { requestAsync } from "./requestAsync";
-import * as CryptoJS from "crypto-js";
-import * as inquirer from 'inquirer';
 import getMAC from 'getmac';
-import { geoCodeString } from "./geocodeUtil";
 import {table,getBorderCharacters} from 'table';
 import {ApiError} from "./api-error";
 import * as turf from "@turf/turf";
 import * as intersect from "@turf/intersect";
-import {
-    UserAuth,
-    requestToken,
-    loadCredentialsFromFile
-} from "@here/olp-sdk-authentication";
-import {RequestFactory, OlpClientSettings, HRN} from "@here/olp-sdk-core";
 
 const fs = require('fs');
 const path = require('path');
@@ -64,11 +54,12 @@ export const questionConfirm = [
     }
 ];
 
-const settings = require('user-settings').file('.herecli');
+const settings = require('user-settings').file('.xyzcli');
 const tableConsole = require("console.table");
-let apiServerUrl: string;
-const xyzUrl = "https://xyz.api.here.com";
-const account_api_url = 'https://account.api.here.com/authentication/v1.1';
+let apiServerUrl = "http://localhost:8080/";
+const xyzUrl = "http://localhost:8080/hub";
+settings.set('ProEnabled', 'true');
+settings.set('ProEnabledTS', new Date().getTime());
 //const tableNew = require("table");
 
 // TODO this should go into env config as well
@@ -96,49 +87,9 @@ export function setApiServerUrl(url: string){
     apiServerUrl = url;
 }
 
-async function getImlUrl(catalogHrn: string){
-    const olpClientSettings = new OlpClientSettings({
-        environment: "here",
-        getToken: () => getWorkspaceToken()
-    });
-    const url = await RequestFactory.getBaseUrl("interactive","v1",olpClientSettings, HRN.fromString(catalogHrn));
-    //console.log(url);
-    return url;
-}
-
 async function getHostUrl(uri: string, catalogHrn: string){
-    if(catalogHrn){
-        uri = await getImlUrl(catalogHrn) + "/layers/" + uri;
-    } else {
-        uri = xyzRoot(false) + "/hub/spaces/" + uri;
-    }
+    uri = xyzRoot(false) + "/hub/spaces/" + uri;
     return uri;
-}
-
-export async function setWorkSpaceCredentials(filePath: string){
-    try {
-        const token: string = await getWorkspaceToken(filePath);//This to verify the credentials
-        settings.set('workspaceMode', 'true');
-        settings.set('credentialsFilePath', filePath);
-        console.log("Workspace credentials loaded successfully");
-    } catch(error){
-        console.log(error.message);
-    }
-}
-
-export async function getWorkspaceToken(credentialsPath : string = ''){
-    if(!credentialsPath){
-        credentialsPath = settings.get('credentialsFilePath');
-    }
-    const credentials = loadCredentialsFromFile(
-        credentialsPath
-    );
-    const userAuth = new UserAuth({
-        credentials,
-        tokenRequester: requestToken
-    });
-    const token: string = await userAuth.getToken();
-    return token;
 }
 
 export const keySeparator = "%%";
@@ -156,555 +107,6 @@ const tableConfig: any = {
         return index === 0 || index === 1 || index === rows || index === size;
     }
 };
-
-const questionLicense = [
-    {
-        type: 'input',
-        name: 'license',
-        message: 'Enter (A)ccept or (D)ecline to proceed'
-    }
-];
-
-export async function resetTermsFlag() {
-    settings.set('ProBetaLicense', 'false');
-}
-
-export async function verifyProLicense() {
-    // let now = new Date().getTime();
-    // let minutesInMilis = 1000 * 60 * 1;
-    // if (settings.get('ProEnabled') && settings.get('ProEnabledTS') && settings.get('ProEnabledTS') + minutesInMilis > now) {
-    if (settings.get('ProEnabled')) {
-        if (settings.get('ProEnabled') === 'true') {
-            return;
-        } else {
-            console.log("This is a Add-on feature and your plan does not have access to this command.")
-            console.log("If you have recently changed your plan, please run 'here configure refresh' command to refresh your settings.");
-            console.log("If you wish to upgrade your plan, please visit developer.here.com.");
-            process.exit(1);
-        }
-    } else {
-        console.log("Refreshing your account access..")
-        await refreshAccount();
-        await verifyProLicense();
-    }
-}
-
-export async function updatePlanDetails(accountMe: any) {
-    settings.set('ProEnabled', 'false');
-    let apps = accountMe.apps;
-    if (apps) {
-        for (let appId of Object.keys(apps)) {
-            let app = apps[appId];
-            if(!app.blocked) {
-                if (app.plan.internal === true || app.dsPlanType.startsWith('XYZ_PRO') || app.dsPlanType.startsWith('XYZ_ENTERPRISE')) {
-                    settings.set('ProEnabled', 'true');
-                    settings.set('ProEnabledTS', new Date().getTime());
-                    console.log("Add-on features enabled.");
-                    break;
-                }
-            }
-        }
-    } else {
-        console.log("Warning : could not update plan details.")
-    }
-}
-
-export async function loginFlow(email: string, password: string) {
-    try {
-        await resetTermsFlag();
-
-        let cookieData = await hereAccountLogin(email, password);
-        let appsData = await getAppIds(cookieData);
-        appsData = JSON.parse(appsData);
-        let hereAccountID = appsData.aid;
-        let updateTC = false;
-        let appIdAppCodeMap : any = {};
-        if (appsData.apps) {
-            let apps = appsData.apps;
-            let defaultAppId = appsData.defaultAppId;
-            updateTC = appsData.tcAcceptedAt == 0 ? true : false;
-            for (let key in apps) {
-                let app = apps[key];
-                appIdAppCodeMap[app.dsAppId] = app.dsAppCode;
-                if(app.status.toLowerCase() == 'active' || app.blocked === false) {
-                    if (key == defaultAppId) {
-                        choiceList.push({ name: app.dsAppId + " (Name-" + app.dsAppName + ")" + ' (DEFAULT)', value: app.dsAppId  });
-                    } else {
-                        choiceList.push({ name: app.dsAppId + " (Name-" + app.dsAppName + ")", value: app.dsAppId });
-                    }
-                }
-            }
-        }
-        if(choiceList.length > 0){
-            let appId;
-            if(choiceList.length === 1){
-                appId = choiceList[0].value;
-            } else {
-                let appIdAnswers : any = await inquirer.prompt(questions);
-                appId = appIdAnswers.tagChoices;
-            }
-            let appCode = appIdAppCodeMap[appId];
-            await updateDefaultAppId(cookieData, hereAccountID, appId, updateTC === false).catch(err => {throw err});
-            await updatePlanDetails(appsData);
-            await generateTokenAndStoreIt(cookieData, appId, {}).catch(err => {throw err});//{} as urm so that its full rights as per policy even when it changes at later stage
-            await encryptAndStore('appDetails', appId + keySeparator + appCode).catch(err => {throw err});
-            await encryptAndStore('apiKeys', appId).catch(err => {throw err});
-            settings.set('apiServerUrl','https://xyz.api.here.com');
-            settings.set('workspaceMode','false');
-            console.log('Default App Selected - ' + appId);
-        }else{
-            console.log('No Active Apps found. Please login to https://developer.here.com for more details.');
-        }
-    }catch(error){
-        console.log(error.message);
-    }
-}
-
-export async function refreshAccount(fullRefresh = false) {
-    const accountInfo: string = await decryptAndGet("accountInfo", "Please run `here configure` command.");
-    const appDataStored: string = await decryptAndGet("appDetails");
-    const appDetails = getSplittedKeys(appDataStored);
-    const credentials = getSplittedKeys(accountInfo);
-    if(!appDetails || !credentials){
-        throw new Error("Error while refreshing Account, please use 'here configre'");
-    }
-
-    try {
-        if(fullRefresh) {
-            await loginFlow(credentials[0], credentials[1]);
-        } else {
-            const mainCoookie = await hereAccountLogin(credentials[0], credentials[1]);
-            const accountMeStr = await getAppIds(mainCoookie);
-            const accountMe = JSON.parse(accountMeStr);
-            const newtoken = await generateTokenAndStoreIt(mainCoookie, appDetails[0], {});//{} as urm so that its full rights as per policy even when it changes at later stage
-            if (newtoken) {
-                await updatePlanDetails(accountMe);
-                console.log("Successfully refreshed account!");
-            }
-        }
-    } catch (e) {
-        console.log(e.message);
-    }
-}
-
-function rightsRequest(appId: string) {
-    return {
-        "urm": {
-            "xyz-hub": {
-                "createFeatures": [
-                    {
-                        "owner": appId
-                    }
-                ],
-                "manageSpaces": [
-                    {
-                        "owner": appId
-                    }
-                ],
-                "readFeatures": [
-                    {
-                        "owner": appId
-                    }
-                ],
-                "updateFeatures": [
-                    {
-                        "owner": appId
-                    }
-                ],
-                "deleteFeatures": [
-                    {
-                        "owner": appId
-                    }
-                ]
-            }
-        }
-    };
-}
-
-export async function createReadOnlyToken(spaceIds: string[], isPermanent: boolean){
-    const appDataStored: string = await decryptAndGet("appDetails");
-    const keys = getSplittedKeys(appDataStored);
-    const appId = keys ? keys[0] : '';
-    const cookie = await getCookieFromStoredCredentials();
-    const accountMeStr = await getAppIds(cookie);
-    let expirationTime : number = 0;
-    if(!isPermanent){
-        expirationTime = Math.round((new Date().getTime())/1000) + (48*60*60); 
-    }
-    const token = await sso.fetchToken(cookie, await readOnlySpaceRightsRequest(spaceIds, accountMeStr), appId, expirationTime);
-    return token.tid;
-}
-
-function getMacAddress() {
-    return getMAC();
-}
-
-export async function login(authId: string, authSecret: string) {
-    const response = await requestAsync({
-        url: xyzRoot(true) + "/token-api/tokens?app_id=" + authId + "&app_code=" + authSecret + "&tokenType=PERMANENT",
-        method: "POST",
-        json: rightsRequest(authId),
-        responseType: "json"
-    });
-
-    if (response.statusCode < 200 || response.statusCode > 299)
-        throw new Error("Failed to login: " + JSON.stringify(response.body));
-
-    encryptAndStore('keyInfo', response.body.tid);
-    encryptAndStore('appDetails', authId + keySeparator + authSecret);
-
-    console.log("Secrets verified successfully");
-    return { response, authId, authSecret };
-}
-
-export async function hereAccountLogin(email: string, password: string) {
-    const mainCookie = await sso.executeWithCookie(email, password);
-    encryptAndStore('accountInfo', email + keySeparator + password);
-    console.log("Secrets verified successfully");
-    return mainCookie;
-}
-
-export async function generateTokenAndStoreIt(mainCookie:string, appId : string, urm: any) {
-    const token = await sso.fetchToken(mainCookie, urm, appId);
-    encryptAndStore('keyInfo', token.tid);
-    encryptAndStore("accountId",token.aid);
-    return token;
-}
-
-async function readOnlySpaceRightsRequest(spaceIds:string[], accountMeString: string) {
-    const aid = await getAccountId();
-    const readFeatureArray = spaceIds.map(id => { 
-        if(accountMeString.indexOf(id) !== -1) {
-            return {space: id};
-        }else {
-            return {space: id, owner: aid};
-        }
-    });
-    return {
-          "xyz-hub": {
-            "readFeatures": readFeatureArray, 
-            "useCapabilities": [{
-            }],
-            "accessConnectors": [{
-            }]
-          }
-    };
-}
-
-export async function getAppIds(cookies: string) {
-    const options = {
-        url: xyzRoot(true)+`/account-api/accounts/me?clientId=cli`,
-        method: 'GET',
-        headers: {
-            "Cookie": cookies
-        }
-    };
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299)
-        throw new Error("Error while fetching Apps: " + JSON.stringify(response.body));
-
-    return response.body;
-}
-
-export async function updateDefaultAppId(cookies: string, accountId: string, appId: string, updateTC: boolean) {
-        let payload : any = {};
-        payload.defaultAppId = appId;
-        if(updateTC){
-            payload.tcAccepted = true;
-        }
-        var options = {
-            url : xyzRoot(true)+`/account-api/accounts/${accountId}`,
-            method : 'PATCH',
-            headers : {
-                "Cookie": cookies
-            },
-            json : payload,
-            responseType: "json"
-        }
-        const response = await requestAsync(options);
-        if (response.statusCode < 200 || response.statusCode > 299)
-            throw new Error("Error while fetching Apps: " + JSON.stringify(response.body));
-
-        return response.body;
-}
-
-export async function createNewSharingRequest(spaceId: string){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharingRequest`,
-        method : 'PUT',
-        headers : {
-            "Cookie": cookie
-        },
-        json : {
-            spaceId: spaceId
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while creating sharing Request: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function getSharingRequests(){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharingRequest`,
-        method : 'GET',
-        headers : {
-            "Cookie": cookie
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while getting sharing Requests: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function getExistingSharing(){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharing`,
-        method : 'GET',
-        headers : {
-            "Cookie": cookie
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while getting sharing: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function deleteSharing(sharingId: string){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharing/${sharingId}`,
-        method : 'DELETE',
-        headers : {
-            "Cookie": cookie
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while deleting sharing: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function deleteSharingRequest(sharingRequestId: string){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharingRequest/${sharingRequestId}`,
-        method : 'DELETE',
-        headers : {
-            "Cookie": cookie
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while deleting sharingRequest: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function getExistingApprovals(){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharingApproval`,
-        method : 'GET',
-        headers : {
-            "Cookie": cookie
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while getting sharing Approval: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function putSharingApproval(sharingId: string, verdict:string, urm: string[] = []){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharingApproval/${sharingId}`,
-        method : 'PUT',
-        headers : {
-            "Cookie": cookie
-        },
-        json : {
-            verdict: verdict,
-            urm: urm
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while putting sharing Approval: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-export async function modifySharingRights(sharingId: string, urm: string[]){
-    if(!cookie){
-        cookie = await getCookieFromStoredCredentials();
-    }
-    var options = {
-        url : xyzRoot(true)+`/account-api/sharing/${sharingId}`,
-        method : 'PATCH',
-        headers : {
-            "Cookie": cookie
-        },
-        json : {
-            urm: urm
-        },
-        responseType: "json"
-    }
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299){
-        throw new Error("Error while Patching sharing: " + JSON.stringify(response.body));
-    }
-    return response.body;
-}
-
-async function validateToken(token: string) {
-    if (validated)
-        return true;
-
-    const response = await requestAsync({
-        url: xyzRoot(true) + "/token-api/tokens/" + token,
-        method: "GET",
-        responseType: "json"
-    });
-
-    if (response.statusCode < 200 || response.statusCode > 299) {
-        console.log("Failed to login : " + JSON.stringify(response.body));
-        throw new Error("Failed to log in");
-    }
-
-    validated = true;
-    return response;
-}
-
-export async function getAccountId(){
-    try{
-        const accountId = await decryptAndGet("accountId", "No accountId found. Try running 'here configure'");
-        return accountId;
-    } catch(error){
-        const currentToken = await decryptAndGet("keyInfo", "No token found");
-        const tokenBody = await getTokenInformation(currentToken);
-        await encryptAndStore("accountId",tokenBody.aid);
-        return tokenBody.aid;
-    }
-}
-
-async function getTokenInformation(tokenId: string){
-    const response = await requestAsync({
-        url: xyzRoot(true) + "/token-api/tokens/" + tokenId,
-        method: "GET",
-        responseType: "json"
-    });
-
-    if (response.statusCode < 200 || response.statusCode > 299) {
-        throw new Error("Fetching token information failed for Token - " + tokenId);
-    }
-    return response.body;
-}
-
-export async function getTokenList(){
-    const cookie = await getCookieFromStoredCredentials();
-    const options = {
-        url: xyzRoot(true) + "/token-api/tokens",
-        method: "GET",
-        headers: {
-            Cookie: cookie
-        }
-    };
-
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299) {
-        throw new Error("Error while fetching tokens :" + response.body);
-    }
-    const tokenInfo = JSON.parse(response.body);
-    return tokenInfo;
-}
-
-export async function getCookieFromStoredCredentials(){
-    const dataStr = await decryptAndGet(
-        "accountInfo",
-        "No here account configure found. Try running 'here configure account'"
-    );
-    const appInfo = getSplittedKeys(dataStr);
-    if (!appInfo) {
-        throw new Error("Account information out of date. Please re-run 'here configure'");
-    }
-    const cookie = await sso.executeWithCookie(appInfo[0], appInfo[1]);
-    return cookie;
-}
-
-export async function encryptAndStore(key: string, toEncrypt: string) {
-    const secretKey = await getMacAddress();
-    const ciphertext = CryptoJS.AES.encrypt(toEncrypt, secretKey);
-    settings.set(key, ciphertext.toString());
-}
-
-export async function decryptAndGet(key: string, description?: string) {
-    const keyInfo = settings.get(key);
-
-    const secretKey = await getMacAddress();
-
-    if (keyInfo) {
-        const bytes = CryptoJS.AES.decrypt(keyInfo, secretKey);
-        const token = bytes.toString(CryptoJS.enc.Utf8);
-        return token;
-    } else {
-        const message = description ? description : "No appId/appCode found. Try running 'here configure'";
-        throw new Error(message);
-    }
-}
-
-export async function verify(readOnly: boolean = false) {
-    let keyInfo = null;
-    if(readOnly) {
-      keyInfo = settings.get('roKeyInfo');
-    }
-    if(!keyInfo || keyInfo==null || keyInfo=="" ){
-        keyInfo = settings.get('keyInfo');
-    }
-    const secretKey = await getMacAddress();
-    if (keyInfo) {
-        const bytes = CryptoJS.AES.decrypt(keyInfo, secretKey);
-        const token = bytes.toString(CryptoJS.enc.Utf8);
-        await validateToken(token);
-        return token;
-    } else {
-        const message = "No saved keyinfo found. Try running 'here configure'";
-        throw new Error(message);
-    }
-}
 
 export function validate(commands: string[], args: string[], program: any) {
     if (!args || args.length === 0) {
@@ -820,50 +222,6 @@ export function getSplittedKeys(inString: string) {
     }
 }
 
-export async function getLocalApiKey(){
-    let response = await geoCodeString("mumbai", false);//sample geocode call to check if apiKey is valid
-    let apiKeys = await decryptAndGet("apiKeys");
-    const apiKeyArr = getSplittedKeys(apiKeys);
-    if(!apiKeyArr){
-        console.log("ApiKey not found, please generate/enable your API Keys at https://developer.here.com. \n" +
-                    "If already generated/enabled, please try again in a few minutes.");
-        process.exit(1);
-    }
-    const apiKey = apiKeyArr[1];
-    return apiKey;
-}
-
-export async function getApiKeys(cookies: string, appId: string) {
-    const hrn = encodeURIComponent('hrn:here:account::HERE:app/'+appId);
-    let token;
-    let ha = cookies.split(';').find(x => x.startsWith('here_access=')||x.startsWith('here_access_st='));
-    if(ha) {
-        token = ha.split('=')[1];
-    }
-    const options = {
-        url: account_api_url + `/apps/${hrn}/apiKeys`,
-        method: 'GET',
-        headers: {
-            Authorization: "Bearer " + token,
-            "Content-Type": "application/json",
-        }
-    };
-    const response = await requestAsync(options);
-    if (response.statusCode < 200 || response.statusCode > 299) {
-        throw new Error("Error while fetching Api Keys: " + JSON.stringify(response.body));
-    }
-    const resp = JSON.parse(response.body);
-    let apiKeys = appId;
-    if(resp.items && resp.items.length > 0) {
-        for(var i=0; i<resp.items.length; i++) {
-            let item = resp.items[i]
-            if(item.enabled === true) {
-                apiKeys += (keySeparator + item.apiKeyId);
-            }
-        }
-    }
-    return apiKeys;
-}
 
 export function getClippedh3HexbinsInsidePolygon(feature: any, h3resolution: string){
     //h3.polyfill
@@ -921,7 +279,7 @@ export async function execInternal(
     method: string,
     contentType: string,
     data: any,
-    token: string,
+    token: string = "",
     gzip: boolean,
     setAuthorization: boolean,
     catalogHrn : string = ""
@@ -943,7 +301,6 @@ export async function execInternal(
     const responseType = contentType.indexOf('json') !== -1 ? 'json' : 'text';
     let headers: any = {
         "Content-Type": contentType,
-        "App-Name": "HereCLI"
     };
     if(isApiServerXyz() || catalogHrn){
         headers["Authorization"] = "Bearer " + token;
@@ -956,11 +313,6 @@ export async function execInternal(
         allowGetBody: true,
         responseType: responseType
     };
-
-    //Remove Auth params if not required, Used to get public response from URL
-    if (setAuthorization == false) {
-        delete reqJson.headers.Authorization;
-    }
 
     const response = await requestAsync(reqJson);
     if (response.statusCode < 200 || response.statusCode > 210) {
@@ -997,7 +349,6 @@ async function execInternalGzip(
     }
     let headers: any = {
         "Content-Type": contentType,
-        "App-Name": "HereCLI",
         "Content-Encoding": "gzip",
         "Accept-Encoding": "gzip"
     };
@@ -1069,14 +420,7 @@ async function execInternalGzip(
 }
 
 export async function execute(uri: string, method: string, contentType: string, data: any, token: string | null = null, gzip: boolean = false, setAuthorization: boolean = true, catalogHrn: string = "") {
-    if (!token) {
-        if(catalogHrn){
-            token = await getWorkspaceToken();
-        } else {
-            token = await verify();
-        }
-    }
-    return await execInternal(uri, method, contentType, data, token, gzip, setAuthorization, catalogHrn);
+    return await execInternal(uri, method, contentType, data, "", gzip, setAuthorization, "");
 }
 
 export function replaceOpearators(expr: string) {

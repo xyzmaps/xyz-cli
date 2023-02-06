@@ -28,42 +28,22 @@ import * as common from "./common";
 import * as inquirer from 'inquirer';
 
 const program = require('commander');
-const settings = require('user-settings').file('.herecli');
+const settings = require('user-settings').file('.xyzcli');
 const latestVersion = require('latest-version');
 
-const commands = ["xyz", "studio", "xs","c","configure", "transform","tf", "help", "geocode","gc", "iml", "interactivemap", "catalog"];
+const commands = ["xyz", "xs", "transform","tf", "help"];
 const fs = require('fs');
 const path = require('path');
-
-const questionLicense = [
-    {
-        type: 'input',
-        name: 'license',
-        message: 'Enter (A)ccept or (D)ecline to proceed'
-    }
-];
 
 async function start() {
     process.removeAllListeners('warning');
     process.env.NODE_NO_WARNINGS = '1';
-    if (settings.get('GAlicense') === 'true') {
-        await checkVersion();
-    } else {
-        await showLicenseConfirmation();
-    }
+    // await checkVersion();
 
     program
         .version(getVersion())
-        .command('configure [verify|refresh]', 'setup configuration for authentication').alias('c')
-        .command('studio [list|delete|show]', 'work with HERE Studio projects')
         .command('transform [csv2geo|shp2geo|gpx2geo]', 'convert from csv/shapefile/gpx to geojson').alias('tf')
-        .command('geocode', 'geocode feature').alias('gc');
-    if(settings.get('workspaceMode') === 'true'){
-        program.command('interactivemap [list|create|upload]', 'work with Interactive map layers').alias('iml')
-        program.command('catalog [list|create]', 'work with workspace catalog')
-    } else {
-        program.command('xyz [list|create|upload]', 'work with Data Hub spaces').alias('xs')
-    }
+        .command('xyz [list|create|upload]', 'work with Data Hub spaces').alias('xs')
     program.parse(process.argv);
     common.validate(commands, program.args, program);
 }
@@ -96,25 +76,6 @@ async function checkVersion() {
     settings.set('lastAccessTime', ctime);
 }
 
-async function showLicenseConfirmation() {
-    console.log(fs.readFileSync(path.resolve(__dirname, 'beta-terms.txt'), 'utf8'));
-    try {
-        const open = require("open");
-        open("http://explore.xyz.here.com/terms-and-conditions",{wait:false});
-    } catch {
-    }
-
-    const answer = await inquirer.prompt<{ license?: string }>(questionLicense);
-
-    const termsResp = answer.license ? answer.license.toLowerCase() : 'decline';
-    if (termsResp === "a" || termsResp === "accept") {
-        settings.set('GAlicense', 'true');
-        await checkVersion();
-    } else {
-        console.log("In order to use the HERE CLI, you will need to (A)ccept the license agreement. If you would like to remove the HERE CLI installed by npm, please enter npm uninstall -g @here/cli");
-        process.exit(1);
-    }
-}
 
 function getLastAccessVersion(ctime: number, ltime: number | undefined) {
     const time = (ctime - (ltime ? ltime : 0)) / (1000 * 60);
