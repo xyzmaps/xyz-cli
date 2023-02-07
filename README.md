@@ -1,47 +1,42 @@
 # XYZ CLI
-[![Build Status](https://travis-ci.com/heremaps/here-cli.svg?branch=master)](https://travis-ci.com/heremaps/here-cli)
 
-XYZ CLI is a Node.js command-line interface to work with XYZ APIs starting with [XYZ Data Hub](https://www.here.xyz) APIs. Right now, it allows you to interact with XYZ Data Hub to create and manage your Spaces, and easily upload and manage your datasets.
+XYZ Maps CLI is a Node.js command-line interface to work with XYZ APIs starting with [XYZ Hub](https://github.com/xyzmaps/xyz-cli) APIs. It allows you to interact with XYZ Hub to create and manage your Spaces, and easily upload and manage your datasets.
+
+XYZ Maps CLI has been forked from the proprietary (but open source) HERE CLI with all HERE specific authentication, telemetry, services and APIs removed. It works directly with the stand-alone, unauthenticated version XYZ Hub APIs. The commands and sub-commands have been renamed to make more sense in the context of the Open Source version of XYZ Maps. It is intended to work with `localhost:8080/hub` APIs right now and not very configurable. Consider it as a stop gap for basic functionality until version 2.0 becomes available.
 
 ### Prerequisites
 
 XYZ CLI is built on Node.js, a cross-platform efficient language to write even complex, local applications.
 
-To use the  XYZ CLI, you should have npm installed. The best way is to go to nodejs.org and install the appropriate package for your system (both 8.x LTS and 10.x Current should work). If you need
-help with this have a look at our [CLI Introduction Guide](https://www.here.xyz/cli/).
+To use the  XYZ CLI, you should have npm installed. The best way is to go to nodejs.org and install the appropriate package for your system (both 8.x LTS and 10.x Current should work). 
 
 ### Installing the CLI
 
 To install the XYZ CLI use the following command. Depending on your system, you might need elevated permissions (like sudo) to install globally.
 
 ```
-npm install -g @here/cli
+npm install -g xyzmaps-cli
 ```
 
 If all goes well, you can check if the CLI is installed correctly by just runnning
 
 ```
-XYZ --help
+xyzmaps --help
 ```
 
 
 ## Configure XYZ CLI
 
-As the XYZ CLI works with XYZ APIs in the cloud, you need to configure your developer identity.
-This only needs to be done once. Just run `XYZ configure` to set the `email` and `password`.
-For detailed information on getting a Developer account have a look at our [Getting Started Guide](https://www.here.xyz/getting-started/).
+As the XYZ CLI works with XYZ APIs hosted locally, so there is no need to configure and API keys or developer identity.
 
 ## Supported Commands
 
-The CLI currently support the following sub-commands:
+The CLI currently enables the following sub-commands:
 
 ```
-- configure|c [verify|refresh]            setup configuration for authentication
-- xyz|xs [list|create|upload]             work with Data Hub spaces
-- studio [list|delete|show]               work with XYZ Studio projects
-- transform|tf [csv2geo|shp2geo|gpx2geo]  convert from csv/shapefile/gpx to geojson
-- geocode|gc                              geocode feature
-- help [command]                          display help for command
+  space|xs [list|create|upload]           work with Data Hub spaces
+  transform|tf [csv2geo|shp2geo|gpx2geo]  convert from csv/shapefile/gpx to geojson
+  help [command]                          display help for command
 ```
 
 ## Development
@@ -80,15 +75,15 @@ npm deploy ...
 
 ### Contributing
 
-We encourage contributions. For fixes and improvements it's helpful to have an [issue](http://github.com/heremaps/here-cli/issues) to reference to. So please file them for us to provide focus. Also read the notes in [CONTRIBUTING.md](CONTRIBUTING.md).
+We encourage contributions. Please read the notes in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 When you add a new sub-command (as `bin/here-commandname.js`) please make sure to also include the relevant documentation (as `docs/commandname.md`).
 
-If the command is interacting with a XYZ service, please include a links to the relevant service documenation at [developer.here.com](https://developer.here.com/documentation). 
-
 ## License
 
-Copyright (C) 2018 - 2021 XYZ Europe B.V.
+Copyright (C) 2023 - 2023 XYZ Maps and contributors
+
+Copyright (C) 2018 - 2021 HERE Europe B.V.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details
 

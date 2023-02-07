@@ -129,21 +129,6 @@ const activityLogConfiguration = [
     }
 ];
 
-const geocoderConfiguration = [
-    {
-        type: 'confirm',
-        name: 'reverseGeocoderConfirmation',
-        message: 'Do you want to enable reverse geocoding (coordinates to address)?',
-        default: false
-    },
-    {
-        type: 'confirm',
-        name: 'forwardGeocoderConfirmation',
-        message: 'Do you want to enable forward geocoding? (address to coordinates)',
-        default: true
-    }
-];
-
 const searchablePropertiesDisable = [
     {
         type: "checkbox",
@@ -706,7 +691,6 @@ program
     .option("--all", "iterate over entire Data Hub space to get entire data of space, output will be shown on the console in GeoJSON format")
     .option("--geojsonl", "to print output of --all in geojsonl format")
     .option("-c, --chunk [chunk]", "chunk size to use in --all option, default 5000")
-    .option("--token <token>", "a external token to access another user's space")
     .option("-p, --prop <prop>", "selection of properties, use p.<FEATUREPROP> or f.<id/updatedAt/tags/createdAt>")
     .option("-w, --web", "display Data Hub space on http://geojson.tools")
     .option("-v, --vector", "inspect and analyze using Data Hub Space Invader and tangram.js")
@@ -977,7 +961,6 @@ program
     .option("-c,--copyright [copyright]", "set copyright text for the space")
     .option("--cacheTTL <cacheTTL>", "set cacheTTL value for the space with valid number")
     .option("--stats", "see detailed space statistics")
-    .option("--token <token>", "a external token to access another user's space config and stats information")
     .option("-r, --raw", "show raw json output")
     .option("-s,--schema [schemadef]", "view or set schema definition (local filepath / http link) for your space, applicable on future data, use with add/delete/update")
     .option("--searchable", "view or configure searchable properties of the Data Hub space, use with add/delete/update")
@@ -987,7 +970,6 @@ program
     .option("--update", "use with tagrules options to update the respective configurations")
     .option("--view", "use with schema/searchable/tagrules options to view the respective configurations")
     .option("--activitylog","configure activity logs for your space interactively")
-    //.option("--geocoder","configure forward or reverse geocoding for your space interactively")
     .option("--console","opens web console for Data Hub")
     .action(function (id, options) {
         if(options.console){
@@ -1043,9 +1025,6 @@ async function configXyzSpace(id: string, options: any) {
         process.exit(1);
     } else if (options.activitylog) {
         await activityLogConfig(id, options);
-        process.exit(1);
-    } else if (options.geocoder) {
-        await geocoderConfig(id, options);
         process.exit(1);
     } else if (options.schema) {
         spacedef = await xyzutil.getSpaceMetaData(id);
@@ -1309,224 +1288,6 @@ async function activityLogConfig(id:string, options:any) {
 
 }
 
-async function geocoderConfig(id:string, options:any) {
-    let patchRequest:any = {};
-    const apiKey ="nokey";
-    let tabledata:any = {};
-    let spacedef = await xyzutil.getSpaceMetaData(id);
-    let enabled = false;
-    if(spacedef.processors) {
-        const processors:any = spacedef.processors;
-        let processor = processors['geocoder-preprocessor'];
-        if(processor && processor[0]){
-            tabledata = processor[0].params;
-        }
-        if(Object.keys(tabledata).length > 0) {
-            enabled = true;
-            console.log("geocoder is enabled for this space with below configurations.");
-            delete tabledata.apiKey;
-            console.table(tabledata);
-        } else {
-            console.log("geocoder for this space is not enabled.")
-        }
-    } else {
-        console.log("geocoder for this space is not enabled.")
-    }
-    
-    if(enabled) {
-        choiceList.push({'name': 'disable geocoder for this space', 'value': 'disable'});
-        choiceList.push({'name': 'reconfigure geocoder for the space', 'value' : 'configure'});
-    } else {
-        choiceList.push({'name': 'enable geocoder for this space', 'value': 'configure'});
-    }
-    choiceList.push({'name': 'cancel operation', 'value': 'abort'});
-
-    const answer: any = await inquirer.prompt(geocoderAction);
-    const actionChoice = answer.actionChoice;
-    
-    if(actionChoice == 'abort') {
-        process.exit(1);
-    } else if (actionChoice == 'disable') {
-        patchRequest['processors'] = {"geocoder-preprocessor": null};
-    } else if(actionChoice == 'configure') {
-        let params : any = {};
-        params['apiKey'] = apiKey;
-        params = await configureGeocodeInteractively(params, options);        
-        let processorDef:any = getEmptyGeocoderProcessorProfile();
-        processorDef['params'] = params;       
-        patchRequest['processors'] = {"geocoder-preprocessor": [processorDef]};
-    } else {
-        console.log("please select only one option");
-        process.exit(1);
-    }
-    if(Object.keys(patchRequest).length > 0) {
-    const url = `${id}?clientId=cli`
-        const response = await execute(
-                url,
-                "PATCH",
-                "application/json",
-                patchRequest,
-                null,
-                false
-            );
-
-        if(response.statusCode >= 200 && response.statusCode < 210) {
-            console.log("geocoder configuration updated successfully, it may take a few seconds to take effect and reflect.");
-        }
-    }
-}
-
-async function configureGeocodeInteractively(params: any, options: any){
-    const geocoderInput = await inquirer.prompt<{ reverseGeocoderConfirmation?: boolean, forwardGeocoderConfirmation?: boolean }>(geocoderConfiguration);
-    if(geocoderInput.reverseGeocoderConfirmation){
-        params['doReverseGeocode'] = true;
-    }
-    if(geocoderInput.forwardGeocoderConfirmation){
-        params['doForwardGeocode'] = true;
-        let qualifiedQueryList: { name: string, value: string }[] = [{name:'country',value:'country'}, {name:'state',value:'state'} , {name:'county',value:'county'}, {name:'city',value:'city'}, {name:'district',value:'district'}, {name:'street',value:'street'}, {name:'houseNumber',value:'houseNumber'}, {name:'postalCode',value:'postalCode'}];
-        let csvColumnsChoiceList: { name: string, value: string }[] = [];
-        if(options.file){
-            if(options.file.toLowerCase().indexOf(".csv") != -1){
-                csvColumnsChoiceList = await getCsvColumnsChoiceList(options);
-            } else {
-                console.error("ERROR : forward geocoding is only allowed for csv files");
-                process.exit(1);
-            }
-        }
-        const qualifiedQueryConfirmation = [
-            {
-                type: 'confirm',
-                name: 'qualifiedQueryConfirmation',
-                message: 'Is your address data structured? (columns for city, state, etc)?',
-                default: false
-            }];
-        const qqInput = await inquirer.prompt<{ qualifiedQueryConfirmation: boolean }>(qualifiedQueryConfirmation);
-        params['forwardQualifiedQuery'] = {};
-        if(qqInput.qualifiedQueryConfirmation){
-            params = await getQualifiedQueryInput(params, csvColumnsChoiceList, qualifiedQueryList, false);
-        } else {
-            params['forwardQuery'] = [];
-            let forwardColumnSelection;
-            if(csvColumnsChoiceList.length > 0){
-                forwardColumnSelection = [
-                    {
-                        type: "checkbox",
-                        name: "columnChoices",
-                        message: "Select columns to be used for geocoding",
-                        choices: csvColumnsChoiceList
-                    }
-                ];
-            } else {
-                forwardColumnSelection = [
-                    {
-                        type: "input",
-                        name: "columnChoices",
-                        message: "Enter comma separated column names to be used for geocoding",
-                    }
-                ];
-            }
-            let answers: any = await inquirer.prompt(forwardColumnSelection);
-            let columnNames: string[];
-            if(csvColumnsChoiceList.length > 0){
-                columnNames = answers.columnChoices;
-            } else {
-                columnNames = answers.columnChoices.split(',');
-            }
-            columnNames.forEach((key: string) => {
-                params['forwardQuery'].push("$"+key);
-            });
-        }
-        const suffixConfirmationPrompt = [{
-            type: 'confirm',
-            name: 'suffixConfirmation',
-            message: 'Do you want to add fix suffix strings to geocoding search?',
-            default: false
-        }];
-        if(qualifiedQueryList.length > 0){
-            const suffixConfirmationPromptInput = await inquirer.prompt<{ suffixConfirmation: boolean}>(suffixConfirmationPrompt);
-            if(suffixConfirmationPromptInput.suffixConfirmation) {
-                params = await getQualifiedQueryInput(params, csvColumnsChoiceList, qualifiedQueryList, true);
-            }
-        }
-        const verbositySelection = [{
-            type: "list",
-            name: "verbosity",
-            message: "Select verbosity level for forward geocoding",
-            choices: [{name: 'NONE', value: 'NONE'},{name: 'MIN', value: 'MIN'},{name: 'MORE', value: 'MORE'},{name: 'ALL', value: 'ALL'}]
-        }];
-        const verbositySelectionInput = await inquirer.prompt<{ verbosity?: string }>(verbositySelection);
-        if(verbositySelectionInput.verbosity){
-            params['verbosity'] = verbositySelectionInput.verbosity;
-        }
-    }
-    return params;
-}
-
-async function getQualifiedQueryInput(params: any, csvColumnsChoiceList: { name: string, value: string }[], qualifiedQueryList: { name: string, value: string }[], isSuffix: boolean){
-    const continueQQConfirmation = [
-        {
-            type: 'confirm',
-            name: 'continueQQConfirmation',
-            message: 'Do you want to add more qualified query parameters?',
-            default: false
-        }];
-    
-    const forwardQualifiedKeySelection = [
-        {
-            type: 'list',
-            name: 'forwardQualifiedKey',
-            message: 'Please select qualified query type',
-            choices: qualifiedQueryList
-        }];
-    
-    let forwardQualifiedColumnSelection;
-    if(csvColumnsChoiceList.length > 0){
-        forwardQualifiedColumnSelection = [
-            {
-                type: "list",
-                name: "forwardQualifiedColumn",
-                message: "Select column to be used for qualified parameter",
-                choices: csvColumnsChoiceList
-            }
-        ];
-    } else {
-        forwardQualifiedColumnSelection = [
-            {
-                type: "input",
-                name: "forwardQualifiedColumn",
-                message: "Enter the column name to be used for qualified parameter",
-            }
-        ];
-    }
-    const forwardSuffixValueSelection = [
-        {
-            type: 'input',
-            name: 'suffix',
-            message: 'Enter fixed suffix string to be used for qualified parameter'
-        }
-    ]
-    let continueQQInput = true;
-    while(continueQQInput && qualifiedQueryList.length > 0){
-        const forwardQualifiedKeySelectionInput = await inquirer.prompt<{ forwardQualifiedKey: string }>(forwardQualifiedKeySelection);
-        if(isSuffix){
-            const forwardSuffixValueSelectionInput = await inquirer.prompt<{ suffix: string }>(forwardSuffixValueSelection);
-            params['forwardQualifiedQuery'][forwardQualifiedKeySelectionInput.forwardQualifiedKey] = forwardSuffixValueSelectionInput.suffix;
-        } else {
-            const forwardQualifiedColumnSelectionInput = await inquirer.prompt<{ forwardQualifiedColumn: string }>(forwardQualifiedColumnSelection);
-            params['forwardQualifiedQuery'][forwardQualifiedKeySelectionInput.forwardQualifiedKey] = "$" + forwardQualifiedColumnSelectionInput.forwardQualifiedColumn;
-        }
-        for(var i = 0; i < qualifiedQueryList.length; i++){
-            if(qualifiedQueryList[i].value == forwardQualifiedKeySelectionInput.forwardQualifiedKey){
-                qualifiedQueryList.splice(i, 1);
-                break;
-            }
-        }
-        const continueQQConfirmationInput = await inquirer.prompt<{ continueQQConfirmation: boolean }>(continueQQConfirmation);
-        continueQQInput = continueQQConfirmationInput.continueQQConfirmation;
-    }
-    return params;
-}
-
 function getEmptyAcitivityLogListenerProfile() {
     return {
         "id": "activity-log",
@@ -1535,13 +1296,6 @@ function getEmptyAcitivityLogListenerProfile() {
             "ModifySpaceEvent.request"
         ]
     }
-}
-
-function getEmptyGeocoderProcessorProfile() {
-    return {
-            "id": "geocoder-preprocessor",
-            "params": null
-        }
 }
 
 function showSpaceStats(spacestatsraw: any) {
@@ -1693,72 +1447,6 @@ program
     })
 */
 
-async function createGeocoderSpace(id:string, options:any){
-    if(!options.file){
-        console.log("ERROR : Please specify file for upload");
-        return;
-    }
-    if(options.forward && options.reverse){
-        console.log("ERROR : Please specify only one option from forward or reverse");
-        return;
-    }
-    if(options.verbosity && !validVerbosityLevels.includes(options.verbosity.toUpperCase())){
-        console.log("ERROR : Please specify valid verbosity level - " + validVerbosityLevels);
-        return;
-    }
-    let params : any = {};
-    params['apiKey'] = "nokey";
-    if(!options.forward && !options.reverse){
-        params = await configureGeocodeInteractively(params, options);
-    }
-    if(options.reverse){
-        params['doReverseGeocode'] = true;
-    }
-    if(options.forward){
-        params['doForwardGeocode'] = true;
-        params['forwardQuery'] = options.forward.split(',').map((x: string) => "$"+x.trim());
-        if(options.suffix){
-            const suffixArray: string[] = options.suffix.split(',').map((x: string) => x.trim());;
-            params['forwardQuery'] = params['forwardQuery'].concat(suffixArray);
-        }
-        if(options.verbosity){
-            params['verbosity'] = options.verbosity.toUpperCase();
-        }
-    }
-    let processorDef:any = getEmptyGeocoderProcessorProfile();
-    processorDef['params'] = params;       
-    if(id){
-        let patchRequest:any = {};
-        patchRequest['processors'] = {"geocoder-preprocessor": [processorDef]};
-        const url = `${id}?clientId=cli`
-        const response = await execute(
-                url,
-                "PATCH",
-                "application/json",
-                patchRequest,
-                null,
-                false
-            );
-    } else {
-        if(!options.title){
-            options.title = (options.forward ? "forward" : " reverse") + " geocode " + path.parse(options.file).name;
-        }
-        if(!options.message){
-            options.message = (options.forward ? "forward" : " reverse") + " geocode " + path.parse(options.file).name;
-        }
-        options.processors = {"geocoder-preprocessor": [processorDef]};
-        const spaceData:any = await xyzutil.createSpace(options).catch(err => 
-            {
-                handleError(err);
-                process.exit(1);                                           
-            });
-        id = spaceData.id;
-    }
-    options.id = options.keyField;
-    options.noCoords = true;
-    options.geocode = true;
-    await xyzutil.uploadToXyzSpace(id, options);
-}
 
 async function getCsvColumnsChoiceList(options: any){
     let csvColumnsChoiceList: { name: string, value: string }[] = [];

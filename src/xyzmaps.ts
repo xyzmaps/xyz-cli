@@ -63,9 +63,9 @@ async function checkVersion() {
         return;
     }
 
-    const pv = await latestVersion('@here/cli');
+    const pv = await latestVersion('xyzmaps-cli');
     if (pv > version) {
-        console.log("herecli('" + version + "') is out of date. Latest version is " + pv + ". Use command 'npm install -g @here/cli' to update to the latest version");
+        console.log("herecli('" + version + "') is out of date. Latest version is " + pv + ". Use command 'npm install -g xyzmaps-cli' to update to the latest version");
         process.exit(1);
     }
     // version matched with current version. We are up to date
