@@ -77,7 +77,7 @@ npm deploy ...
 
 We encourage contributions. Please read the notes in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-When you add a new sub-command (as `bin/here-commandname.js`) please make sure to also include the relevant documentation (as `docs/commandname.md`).
+When you add a new sub-command (as `bin/xyzmaps-newcmd.js`) please make sure to also include the relevant documentation (as `docs/newcmd.md`).
 
 ## License
 
