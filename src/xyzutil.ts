@@ -1309,30 +1309,22 @@ export async function showSpace(id: string, options: any) {
 }
 
 async function launchHereGeoJson(uri: string, spaceIds: string[],  token: string, isPermanent: boolean) {
-    if(!token){
-        token = await getReadOnlyToken(spaceIds, isPermanent);
-    }
-    const accessAppend =
-        uri.indexOf("?") == -1
-            ? "?access_token=" + token
-            : "&access_token=" + token;
     open(
         "http://geojson.tools/index.html?url=" +
-        common.xyzRoot(false) +
-        uri +
-        accessAppend
+        common.xyzRoot(true) + '/spaces/' +
+        uri
         , { wait: false });
 }
 
 async function getReadOnlyToken(inputSpaceIds: string[], isPermanent: boolean){
-    return "notoken";
+    return "";
 }
 
 async function launchXYZSpaceInvader(spaceId: string, tags: string, token: string, isPermanent: boolean) {
     if(!token){
         token = await getReadOnlyToken([spaceId], isPermanent);
     }
-    const uri = "https://geojson.tools/space-invader/?mode=1&space=" + spaceId + "&token=" + token + tags; //TODO add property search values
+    const uri = "http://localhost:8001/?mode=1&space=" + spaceId + "&token=" + tags; //TODO add property search values
     open(
         uri
         , { wait: false });
