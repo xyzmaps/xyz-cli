@@ -1324,7 +1324,7 @@ async function launchXYZSpaceInvader(spaceId: string, tags: string, token: strin
     if(!token){
         token = await getReadOnlyToken([spaceId], isPermanent);
     }
-    const uri = "http://localhost:8001/?mode=1&space=" + spaceId + "&token=" + tags; //TODO add property search values
+    const uri = "https://xyzmaps.github.io/xyz-space-invader/?mode=1&space=" + spaceId + "&token=" + tags; //TODO add property search values
     open(
         uri
         , { wait: false });
