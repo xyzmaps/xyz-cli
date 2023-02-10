@@ -1310,7 +1310,7 @@ export async function showSpace(id: string, options: any) {
 
 async function launchHereGeoJson(uri: string, spaceIds: string[],  token: string, isPermanent: boolean) {
     open(
-        "http://geojson.tools/index.html?url=" +
+        "https://xyzmaps.github.io/geojson-tool/?url=" +
         common.xyzRoot(true) + '/spaces/' +
         uri
         , { wait: false });

@@ -692,7 +692,7 @@ program
     .option("--geojsonl", "to print output of --all in geojsonl format")
     .option("-c, --chunk [chunk]", "chunk size to use in --all option, default 5000")
     .option("-p, --prop <prop>", "selection of properties, use p.<FEATUREPROP> or f.<id/updatedAt/tags/createdAt>")
-    .option("-w, --web", "display Data Hub space on http://geojson.tools")
+    .option("-w, --web", "display Data Hub space on https://xyzmaps.github.io/geojson-tool/")
     .option("-v, --vector", "inspect and analyze using Data Hub Space Invader and tangram.js")
     .option("-x, --permanent", "uses Permanent token for --web and --vector option")
     .option("-s, --search <propfilter>", "search expression in \"double quotes\", use single quote to signify string value,  use p.<FEATUREPROP> or f.<id/updatedAt/tags/createdAt> (Use '+' for AND , Operators : >,<,<=,<=,=,!=) (use comma separated values to search multiple values of a property) {e.g. \"p.name=John,Tom+p.age<50+p.phone='9999999'+p.zipcode=123456\"}")
