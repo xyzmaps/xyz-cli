@@ -34,16 +34,6 @@ const path = require('path');
 const geojson2h3 = require('geojson2h3');
 const h3resolutionRadiusMap = require('./h3resolutionRadiusMap.json');
 
-let choiceList: { name: string, value: string}[] = [];
-const questions = [
-    {
-        type: "list",
-        name: "tagChoices",
-        message: "Select default AppId.",
-        choices: choiceList
-    }
-];
-
 export const questionConfirm = [
     {
         type: 'input',
@@ -53,41 +43,22 @@ export const questionConfirm = [
 ];
 
 const settings = require('user-settings').file('.xyzcli');
-const tableConsole = require("console.table");
-let apiServerUrl = "http://localhost:8080/";
-const xyzUrl = "http://localhost:8080/hub";
+const hubApi = settings.get("hubApi") || "http://localhost:8080/hub"
+settings.set("hubApi",hubApi)
 settings.set('ProEnabled', 'true');
 settings.set('ProEnabledTS', new Date().getTime());
-//const tableNew = require("table");
 
-// TODO this should go into env config as well
-export function xyzRoot(xyzUrlAlways: boolean){
-    if(xyzUrlAlways){
-        return xyzUrl;
-    } else {
-        if(!apiServerUrl){
-            apiServerUrl = settings.get('apiServerUrl');
-            if(!apiServerUrl){
-                settings.set('apiServerUrl',xyzUrl);
-                apiServerUrl = xyzUrl;
-            }
-        }
-        return apiServerUrl;
-    }
+export function xyzRoot(){
+    return hubApi;
 }
 
 export function isApiServerXyz(){
-    return (xyzRoot(false) === xyzUrl);
+    return true;
 }
 
-export function setApiServerUrl(url: string){
-    settings.set('apiServerUrl',url);
-    apiServerUrl = url;
-}
 
-async function getHostUrl(uri: string, catalogHrn: string){
-    uri = xyzRoot(false) + "/hub/spaces/" + uri;
-    return uri;
+async function getHostUrl(uri: string){
+    return `${hubApi}/hub/spaces/${uri}` 
 }
 
 export const keySeparator = "%%";
@@ -294,15 +265,15 @@ export async function execInternal(
         );
     }
     if (!uri.startsWith("http")) {
-        uri = await getHostUrl(uri, catalogHrn);
+        uri = await getHostUrl(uri);
     }
     const responseType = contentType.indexOf('json') !== -1 ? 'json' : 'text';
     let headers: any = {
         "Content-Type": contentType,
     };
-    if(isApiServerXyz() || catalogHrn){
-        headers["Authorization"] = "Bearer " + token;
-    }
+    // if(isApiServerXyz()){
+    //     headers["Authorization"] = "Bearer " + token;
+    // }
     const reqJson = {
         url: uri,
         method: method,
@@ -343,16 +314,16 @@ async function execInternalGzip(
 ) {
     const zippedData = await gzip(data);
     if (!uri.startsWith("http")) {
-        uri = await getHostUrl(uri, catalogHrn);
+        uri = await getHostUrl(uri);
     }
     let headers: any = {
         "Content-Type": contentType,
         "Content-Encoding": "gzip",
         "Accept-Encoding": "gzip"
     };
-    if(isApiServerXyz() || catalogHrn){
-        headers["Authorization"] = "Bearer " + token;
-    }
+    // if(isApiServerXyz() || catalogHrn){
+    //     headers["Authorization"] = "Bearer " + token;
+    // }
     const responseType = contentType.indexOf('json') !== -1 ? 'json' : 'text';
     const reqJson = {
         url: uri,
