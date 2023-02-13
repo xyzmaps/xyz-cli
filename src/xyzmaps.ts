@@ -35,7 +35,7 @@ const commands = ["space", "s", "transform","tf", "help"];
 async function start() {
     process.removeAllListeners('warning');
     process.env.NODE_NO_WARNINGS = '1';
-    // await checkVersion();
+    await checkVersion();
 
     program
         .version(getVersion())

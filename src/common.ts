@@ -45,8 +45,6 @@ export const questionConfirm = [
 const settings = require('user-settings').file('.xyzcli');
 const hubApi = settings.get("hubApi") || "http://localhost:8080/hub"
 settings.set("hubApi",hubApi)
-settings.set('ProEnabled', 'true');
-settings.set('ProEnabledTS', new Date().getTime());
 
 export function xyzRoot(){
     return hubApi;
@@ -58,7 +56,7 @@ export function isApiServerXyz(){
 
 
 async function getHostUrl(uri: string){
-    return `${hubApi}/hub/spaces/${uri}` 
+    return `${hubApi}/spaces/${uri}` 
 }
 
 export const keySeparator = "%%";
@@ -282,6 +280,7 @@ export async function execInternal(
         allowGetBody: true,
         responseType: responseType
     };
+    // console.log(reqJson)
 
     const response = await requestAsync(reqJson);
     if (response.statusCode < 200 || response.statusCode > 210) {
