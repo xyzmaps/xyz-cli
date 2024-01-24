@@ -1324,7 +1324,8 @@ async function launchXYZSpaceInvader(spaceId: string, tags: string, token: strin
     if(!token){
         token = await getReadOnlyToken([spaceId], isPermanent);
     }
-    const uri = "https://xyzmaps.github.io/xyz-space-invader/?mode=1&space=" + spaceId + tags + "&url=" + common.xyzRoot() ; //TODO add property search values
+    const uri = "https://xyzmaps.github.io/xyz-space-invader/?mode=1&space=" + spaceId + tags + "&hubApi=" + common.xyzRoot() ; //TODO add property search values
+    console.log(uri);
     open(
         uri
         , { wait: false });
