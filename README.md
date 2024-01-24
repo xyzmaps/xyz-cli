@@ -47,7 +47,7 @@ To develop the CLI further and add new features, first clone this repository and
 npm dependencies.
 
 ```
-git clone https://github.com/heremaps/here-cli.git
+git clone https://github.com/xyzmaps/here-cli.git
 npm install
 ```
 
