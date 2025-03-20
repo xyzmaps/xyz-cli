@@ -45,15 +45,15 @@ export const questionConfirm = [
 const settings = require('user-settings').file('.xyzcli');
 const hubApi = settings.get("hubApi") || "http://localhost:8080/hub"
 settings.set("hubApi",hubApi)
+const authToken = settings.get("token") || ""
+
+export function getAuthToken(){
+    return authToken;
+}
 
 export function xyzRoot(){
     return hubApi;
 }
-
-export function isApiServerXyz(){
-    return true;
-}
-
 
 async function getHostUrl(uri: string){
     return `${hubApi}/spaces/${uri}` 
@@ -220,7 +220,7 @@ export function getH3HexbinChildren(h3Index: string, resolution: number){
 export function handleError(apiError: ApiError, isIdSpaceId: boolean = false) {
     if (apiError.statusCode) {
         if (apiError.statusCode == 401) {
-            console.log("Operation FAILED : Unauthorized, if the problem persists, please reconfigure account with `here configure` command");
+            console.log("Operation FAILED : Unauthorized, check your \"token\" in the ~/.xyzcli config file");
         } else if (apiError.statusCode == 403) {
             console.log("Operation FAILED : Insufficient rights to perform action");
         } else if (apiError.statusCode == 404) {
@@ -246,10 +246,10 @@ export async function execInternal(
     method: string,
     contentType: string,
     data: any,
-    token: string = "",
+    token: string = "", // ignored
     gzip: boolean,
-    setAuthorization: boolean,
-    catalogHrn : string = ""
+    setAuthorization: boolean, //ignored
+    catalogHrn : string = "" //ignored
 ) {
     if (gzip) {
         return await execInternalGzip(
@@ -269,9 +269,10 @@ export async function execInternal(
     let headers: any = {
         "Content-Type": contentType,
     };
-    // if(isApiServerXyz()){
-    //     headers["Authorization"] = "Bearer " + token;
-    // }
+    // ignore parameters and just use configured token
+    if(getAuthToken()){
+        headers["Authorization"] = "Bearer " + getAuthToken();
+    }
     const reqJson = {
         url: uri,
         method: method,
@@ -320,9 +321,10 @@ async function execInternalGzip(
         "Content-Encoding": "gzip",
         "Accept-Encoding": "gzip"
     };
-    // if(isApiServerXyz() || catalogHrn){
-    //     headers["Authorization"] = "Bearer " + token;
-    // }
+    // ignore parameters and just use configured token
+    if(getAuthToken()){
+        headers["Authorization"] = "Bearer " + getAuthToken();
+    }
     const responseType = contentType.indexOf('json') !== -1 ? 'json' : 'text';
     const reqJson = {
         url: uri,
